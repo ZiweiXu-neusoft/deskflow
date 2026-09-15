@@ -4,6 +4,7 @@
 # SPDX-License-Identifier: MIT
 
 if(UNIX AND NOT APPLE)
+  option(REQUIRE_PORTAL_CLIPBOARD "Require native Wayland clipboard portal support" OFF)
   pkg_check_modules(LIBEI REQUIRED QUIET "libei-1.0 >= ${REQUIRED_LIBEI_VERSION}")
   message(STATUS "libei version: ${LIBEI_VERSION}")
 
@@ -19,6 +20,10 @@ if(UNIX AND NOT APPLE)
   check_symbol_exists(xdp_input_capture_session_get_restore_token "libportal/inputcapture.h" HAVE_IC_RESTORE)
   check_symbol_exists(xdp_session_request_clipboard "libportal/portal-helpers.h;libportal/clipboard.h" HAVE_LP_CLIPBOARD)
   cmake_pop_check_state()
+  if(REQUIRE_PORTAL_CLIPBOARD AND NOT HAVE_LP_CLIPBOARD)
+    message(FATAL_ERROR
+      "Native clipboard portal support is required. Install libportal >= 0.10 development files and reconfigure.")
+  endif()
 endif()
 
 if(WIN32)
