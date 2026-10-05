@@ -18,8 +18,9 @@
 
 namespace deskflow {
 
-PortalRemoteDesktop::PortalRemoteDesktop(EiComputer *computer, IEventQueue *events)
-    : m_computer{computer},
+PortalRemoteDesktop::PortalRemoteDesktop(EiComputer *computer, IEventQueue *events, bool clipboardOnly)
+    : m_clipboardOnly{clipboardOnly},
+      m_computer{computer},
       m_events{events},
       m_portal{xdp_portal_new()}
 {
@@ -79,7 +80,8 @@ void PortalRemoteDesktop::handleSessionClosed(XdpSession *session)
   LOG_ERR("portal remote desktop session was closed, reconnecting");
   g_signal_handler_disconnect(session, m_sessionSignalId);
   m_sessionSignalId = 0;
-  m_events->addEvent(Event(EventTypes::EISessionClosed, m_computer->getEventTarget()));
+  if (!m_clipboardOnly)
+    m_events->addEvent(Event(EventTypes::EISessionClosed, m_computer->getEventTarget()));
 
   // gcc warning "Suspicious usage of 'sizeof(A*)'" can be ignored
   g_clear_object(&m_session);
@@ -132,6 +134,11 @@ void PortalRemoteDesktop::handleSessionStarted(GObject *object, GAsyncResult *re
   m_sessionRestoreToken = xdp_session_get_restore_token(session);
   if (m_sessionRestoreToken) {
     Settings::setValue(Settings::Client::XdpRestoreToken, QString(m_sessionRestoreToken));
+  }
+
+  if (m_clipboardOnly) {
+    LOG_INFO("server native clipboard session started (no input emulation)");
+    return;
   }
 
   // ConnectToEIS requires version 2 of the xdg-desktop-portal (and the same
@@ -205,7 +212,7 @@ gboolean PortalRemoteDesktop::initSession()
 
   LOG_DEBUG("setting up remote desktop session with restore token %s", m_sessionRestoreToken);
   xdp_portal_create_remote_desktop_session_full(
-      m_portal, static_cast<XdpDeviceType>(XDP_DEVICE_POINTER | XDP_DEVICE_KEYBOARD), XDP_OUTPUT_NONE,
+      m_portal, m_clipboardOnly ? XDP_DEVICE_NONE : static_cast<XdpDeviceType>(XDP_DEVICE_POINTER | XDP_DEVICE_KEYBOARD), XDP_OUTPUT_NONE,
       XDP_REMOTE_DESKTOP_FLAG_NONE, XDP_CURSOR_MODE_HIDDEN, XDP_PERSIST_MODE_PERSISTENT, m_sessionRestoreToken,
       nullptr, // cancellable
       [](GObject *obj, GAsyncResult *res, gpointer data) {

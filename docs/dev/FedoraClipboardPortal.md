@@ -66,3 +66,17 @@ user confirmed clipboard synchronization and Android Studio menus worked.
 This is a source build from the upstream development branch, not a new stable
 Deskflow release. No clipboard contents, personal settings, certificates or
 compiled binaries are included in this repository change.
+
+## Server clipboard support
+
+The Fedora server uses a separate RemoteDesktop session requesting clipboard
+access with no input devices. It does not connect that session to EIS, so the
+InputCapture session remains responsible for keyboard and mouse control. This
+also works with InputCapture version 1 backends. Both clipboard directions use
+the shared cache and the RemoteDesktop clipboard ownership and transfer events;
+the InputCapture activation handler does not overwrite this cache.
+
+Verified on 2026-10-05: the user confirmed text copy/paste in both directions
+and no unexpected C input after switching to this implementation. All 30
+existing test executables passed. These tests do not exercise live GNOME portal
+permissions; the clipboard result was verified in the running desktop session.

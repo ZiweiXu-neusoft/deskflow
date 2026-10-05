@@ -59,7 +59,12 @@ EiComputer::EiComputer(bool isPrimary, IEventQueue *events, bool usePortal)
       handleConnectedToEisEvent(e);
     });
     if (isPrimary) {
-      // Portal input capture manages its own clipboard
+      // A separate RemoteDesktop session provides clipboard access even when
+      // the InputCapture backend only implements version 1.
+#ifdef HAVE_LIBPORTAL_CLIPBOARD
+      m_clipboard = new EiClipboard(kClipboardClipboard);
+      m_portalRemoteDesktop = new PortalRemoteDesktop(this, m_events, true);
+#endif
       m_portalInputCapture = new PortalInputCapture(this, m_events);
 #ifdef HAVE_LIBPORTAL_SHORTCUTS
       m_portalGlobalShortcuts = new PortalGlobalShortcuts(this, m_events);
@@ -178,7 +183,7 @@ void *EiComputer::getEventTarget() const
 bool EiComputer::getClipboard(ClipboardID id, IClipboard *clipboard) const
 {
   // If using portal input capture, get clipboard from there
-  if (m_portalInputCapture) {
+  if (m_portalInputCapture && !m_clipboard) {
     const auto sourceClipboard = m_portalInputCapture->getClipboard(id);
     if (!sourceClipboard) {
       return false;
@@ -486,7 +491,7 @@ bool EiComputer::setClipboard(ClipboardID id, const IClipboard *clipboard)
   }
 
   // If using portal input capture, set clipboard there
-  if (m_portalInputCapture) {
+  if (m_portalInputCapture && !m_clipboard) {
     IClipboard *targetClipboard = m_portalInputCapture->getClipboard(id);
     if (!targetClipboard) {
       return false;

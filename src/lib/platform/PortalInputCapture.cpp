@@ -740,6 +740,8 @@ void PortalInputCapture::handleActivated(
   m_isActive = true;
 
 #ifdef HAVE_LIBPORTAL_CLIPBOARD
+  if (m_computer->getClipboardCache())
+    return; // The independent clipboard session owns synchronization.
   if (m_session) {
     LOG_DEBUG("reading clipboard selection on activation");
     m_computer->sendClipboardEvent(EventTypes::ClipboardGrabbed, kClipboardClipboard);
