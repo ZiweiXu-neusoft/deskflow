@@ -47,11 +47,11 @@ PortalRemoteDesktop::~PortalRemoteDesktop()
     m_glibMainLoop = nullptr;
   }
 
-  if (m_sessionSignalId)
+  if (m_session && m_sessionSignalId)
     g_signal_handler_disconnect(m_session, m_sessionSignalId);
-  if (m_selectionTransferSignalId)
+  if (m_session && m_selectionTransferSignalId)
     g_signal_handler_disconnect(m_session, m_selectionTransferSignalId);
-  if (m_selectionOwnerChangedSignalId)
+  if (m_session && m_selectionOwnerChangedSignalId)
     g_signal_handler_disconnect(m_session, m_selectionOwnerChangedSignalId);
   if (m_session)
     g_object_unref(m_session);
@@ -78,7 +78,8 @@ void PortalRemoteDesktop::reconnect(unsigned int timeout)
 void PortalRemoteDesktop::handleSessionClosed(XdpSession *session)
 {
   LOG_ERR("portal remote desktop session was closed, reconnecting");
-  g_signal_handler_disconnect(session, m_sessionSignalId);
+  if (m_sessionSignalId)
+    g_signal_handler_disconnect(session, m_sessionSignalId);
   m_sessionSignalId = 0;
   if (!m_clipboardOnly)
     m_events->addEvent(Event(EventTypes::EISessionClosed, m_computer->getEventTarget()));

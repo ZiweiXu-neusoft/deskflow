@@ -39,6 +39,16 @@ struct ScrollRemainder
 
 namespace deskflow {
 
+namespace {
+
+bool isKdeSession()
+{
+  const auto *desktop = std::getenv("XDG_CURRENT_DESKTOP");
+  return desktop && std::strstr(desktop, "KDE");
+}
+
+} // namespace
+
 EiComputer::EiComputer(bool isPrimary, IEventQueue *events, bool usePortal)
     : PlatformComputer{events},
       m_isPrimary{isPrimary},
@@ -60,10 +70,14 @@ EiComputer::EiComputer(bool isPrimary, IEventQueue *events, bool usePortal)
     });
     if (isPrimary) {
       // A separate RemoteDesktop session provides clipboard access even when
-      // the InputCapture backend only implements version 1.
+      // the InputCapture backend only implements version 1. KDE's portal
+      // rejects a RemoteDesktop SelectDevices request without input devices,
+      // so retain its native InputCapture path instead.
 #ifdef HAVE_LIBPORTAL_CLIPBOARD
-      m_clipboard = new EiClipboard(kClipboardClipboard);
-      m_portalRemoteDesktop = new PortalRemoteDesktop(this, m_events, true);
+      if (!isKdeSession()) {
+        m_clipboard = new EiClipboard(kClipboardClipboard);
+        m_portalRemoteDesktop = new PortalRemoteDesktop(this, m_events, true);
+      }
 #endif
       m_portalInputCapture = new PortalInputCapture(this, m_events);
 #ifdef HAVE_LIBPORTAL_SHORTCUTS
